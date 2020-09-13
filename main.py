@@ -92,6 +92,7 @@ def get_tensor_by_data(data, stations):
 if __name__ == '__main__':
   initialize_time_keys()
   data_file_names = get_data_file_name_list()
+  stations = get_station_list()
   for file_name in data_file_names:
     data = get_dataframe_from_file(f'data/{file_name}')
     tensor = get_tensor_by_data(data, stations)
