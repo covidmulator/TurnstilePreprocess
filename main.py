@@ -10,12 +10,12 @@ def initialize_time_keys():
   for hour in range(5, 24):
     _hour = str(hour).zfill(2)
     __hour = str(hour + 1).zfill(2)
-    time_key = f'{_hour}~{__hour}'
+    time_key = f"{_hour}~{__hour}"
     time_keys.append(time_key)
-  time_keys.append('24~')
+  time_keys.append("24~")
 
 def get_data_file_name_list():
-  return os.listdir('data/')
+  return os.listdir("data/")
 
 def get_station_list():
   with open("./stations.json") as file:
@@ -30,22 +30,21 @@ def parse_int(string):
 def restructure_row(row):
   indexes = row.index
   result = {
-    'date': row['날짜'],
-    'station': row['역명'].split('(')[0],
-    'type': row['구분'],
+    "date": row["날짜"],
+    "station": row["역명"].split("(")[0],
+    "type": row["구분"],
   }
 
-  time_indexes = indexes[5:]
-  for time_index in time_indexes:
-    result[time_index] = parse_int(row[time_index])
+  for time_key in time_keys:
+    result[time_key] = parse_int(row[time_key])
   
   return result
 
 def get_dataframe_from_file(file_path):
   extension =  get_file_extension(file_path)
-  if extension == '.xlsx':
+  if extension == ".xlsx":
     return pd.read_excel(file_path)
-  elif extension == '.csv':
+  elif extension == ".csv":
     return pd.read_csv(file_path)
 
 def ensure_keys_in_tensor(tensor, date):
@@ -58,13 +57,13 @@ def ensure_keys_in_tensor(tensor, date):
 
 def get_row_info(row):
   return (
-    row['date'],
-    row['station'],
-    row['type']
+    row["date"],
+    row["station"],
+    row["type"]
   )
 
 def get_turnstile_weight(_type):
-  return 1 if _type == '하차' else 0
+  return 1 if _type == "하차" else 0
 
 def get_tensor_by_data(data, stations):
   tensor = {}
@@ -89,11 +88,35 @@ def get_tensor_by_data(data, stations):
   
   return tensor
 
-if __name__ == '__main__':
+def remove_useless_stations(data, stations):
+  data["역명"] = data["역명"].map(lambda x: x.split("(")[0])
+  useless_indexes = data[
+    (data["역명"] != "강남") &
+    (data["역명"] != "선릉") &
+    (data["역명"] != "서초") &
+    (data["역명"] != "대치") &
+    (data["역명"] != "교내") &
+    (data["역명"] != "도곡") &
+    (data["역명"] != "양재") &
+    (data["역명"] != "남부터미널")
+  ].index
+  data = data.drop(useless_indexes)
+  data = data.reset_index(drop=True)
+
+  return data
+
+def save_tensor(file_name, tensor):
+  year = os.path.splitext(file_name)[0]
+  with open(f"result/{year}.json", "w") as file:
+    json.dump(tensor, file, ensure_ascii=False)
+
+if __name__ == "__main__":
   initialize_time_keys()
   data_file_names = get_data_file_name_list()
   stations = get_station_list()
   for file_name in data_file_names:
-    data = get_dataframe_from_file(f'data/{file_name}')
+    print(file_name)
+    data = get_dataframe_from_file(f"data/{file_name}")
+    data = remove_useless_stations(data, stations)
     tensor = get_tensor_by_data(data, stations)
-    print(json.dumps(tensor, ensure_ascii=False))
+    save_tensor(file_name, tensor)
